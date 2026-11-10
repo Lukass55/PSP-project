@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# PyCharm
+.idea/
+
+# SQLite duomenų bazė
+*.db
+
+# Testavimo failai
+.pytest_cache/
+.coverage
+
+# Aplinkos kintamieji
+.env
