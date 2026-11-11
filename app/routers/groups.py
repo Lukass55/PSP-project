@@ -8,6 +8,22 @@ from app.schemas import GroupCreate
 
 router = APIRouter(tags=["Groups"])
 
+@router.get("/tenants/{tenant_id}/groups")
+def get_groups(tenant_id: int, db: Session = Depends(get_db)):
+    groups = (
+        db.query(Group)
+        .filter(Group.tenant_id == tenant_id)
+        .order_by(Group.id)
+        .all()
+    )
+
+    return [
+        {
+            "id": group.id,
+            "name": group.name
+        }
+        for group in groups
+    ]
 
 @router.post("/tenants/{tenant_id}/groups")
 def create_group(

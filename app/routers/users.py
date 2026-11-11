@@ -8,6 +8,19 @@ from app.schemas import UserCreate
 
 router = APIRouter(tags=["Users"])
 
+@router.get("/tenants/{tenant_id}/users")
+def get_users(tenant_id: int, db: Session = Depends(get_db)):
+    users = (
+        db.query(User)
+        .filter(User.tenant_id == tenant_id)
+        .order_by(User.id)
+        .all()
+    )
+
+    return [
+        {"id": user.id, "name": user.name, "surname": user.surname}
+        for user in users
+    ]
 
 @router.post("/tenants/{tenant_id}/users")
 def create_user(

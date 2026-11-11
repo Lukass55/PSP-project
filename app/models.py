@@ -48,3 +48,11 @@ class ExpenseShare(Base):
     expense_id = Column(Integer, ForeignKey("expenses.id"), nullable=False)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     amount = Column(Numeric(10, 2), nullable=False)
+
+class Account(Base):
+    __tablename__ = "accounts"
+
+    id = Column(Integer, primary_key=True)
+    username = Column(String, unique=True, nullable=False)
+    password_hash = Column(String, nullable=False)
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=False)

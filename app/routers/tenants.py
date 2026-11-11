@@ -8,7 +8,17 @@ from app.schemas import TenantCreate
 
 router = APIRouter(tags=["Tenants"])
 
+@router.get("/tenants")
+def get_tenants(db: Session = Depends(get_db)):
+    tenants = db.query(Tenant).order_by(Tenant.id).all()
 
+    return [
+        {
+            "id": tenant.id,
+            "name": tenant.name
+        }
+        for tenant in tenants
+    ]
 @router.post("/tenants")
 def create_tenant(tenant: TenantCreate, db: Session = Depends(get_db)):
     name = tenant.name.strip()

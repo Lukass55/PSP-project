@@ -1,0 +1,477 @@
+
+:root {
+    --ink: #23362e;
+    --muted: #718078;
+    --accent: #356e58;
+    --accent-dark: #285340;
+    --line: #e3e9e3;
+    --canvas: #f7f9f6;
+    --shadow: 0 9px 28px rgba(37, 64, 48, 0.055);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    background: var(--canvas);
+    color: var(--ink);
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+.shell {
+    max-width: 1200px;
+    margin: auto;
+    padding-left: 24px;
+    padding-right: 24px;
+}
+
+/* VIRŠUTINĖ NAVIGACIJA */
+
+.topbar {
+    background: #ffffff;
+    border-bottom: 1px solid var(--line);
+}
+
+.topbar-inner {
+    min-height: 82px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+}
+
+.brand {
+    text-decoration: none;
+    color: var(--ink);
+    font-size: 27px;
+    font-weight: 800;
+    letter-spacing: -1px;
+    white-space: nowrap;
+}
+
+.brand-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 39px;
+    height: 39px;
+    background: #e4f0e7;
+    color: var(--accent);
+    border-radius: 12px;
+    margin-right: 8px;
+}
+
+.main-nav {
+    display: flex;
+    gap: 8px;
+}
+
+.nav-item {
+    border: 0;
+    background: transparent;
+    border-radius: 12px;
+    padding: 12px 17px;
+    color: #50675a;
+    font-weight: 650;
+}
+
+.nav-item.active {
+    background: #e8f1e9;
+    color: var(--accent-dark);
+}
+
+.nav-item:hover {
+    background: #f0f5f0;
+}
+
+.header-tag {
+    color: var(--muted);
+    font-size: 13px;
+}
+
+/* PAGRINDINĖ ANTRAŠTĖ */
+
+.eyebrow {
+    font-size: 11px;
+    letter-spacing: 2px;
+    font-weight: 750;
+    color: var(--accent);
+    margin-bottom: 10px;
+}
+
+.hero h1 {
+    font-weight: 800;
+    letter-spacing: -1.5px;
+    font-size: clamp(28px, 3vw, 39px);
+    margin-bottom: 7px;
+}
+
+.hero p {
+    color: var(--muted);
+    font-size: 16px;
+    margin: 0;
+}
+
+/* MYGTUKAI */
+
+.btn-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    font-weight: 650;
+}
+
+.btn-primary:hover,
+.btn-primary:focus {
+    background: var(--accent-dark);
+    border-color: var(--accent-dark);
+}
+
+/* KORTELĖS */
+
+.panel {
+    background: #ffffff;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 24px;
+    box-shadow: var(--shadow);
+}
+
+.panel-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.panel-heading h2,
+.section-intro h2 {
+    font-size: 20px;
+    font-weight: 750;
+    margin: 0;
+    letter-spacing: -0.4px;
+}
+
+.subtle,
+.section-intro p {
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.section-intro {
+    margin-bottom: 22px;
+}
+
+.section-intro p {
+    margin-top: 8px;
+}
+
+/* FORMOS */
+
+.form-label {
+    font-weight: 600;
+    color: #4a6054;
+    font-size: 13px;
+}
+
+.form-control,
+.form-select {
+    border: 1px solid #dce6dd;
+    border-radius: 10px;
+    min-height: 44px;
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: #82b19a;
+    box-shadow: 0 0 0 0.2rem rgba(53, 110, 88, 0.13);
+}
+
+/* STATISTIKOS KORTELĖS */
+
+.stat-card {
+    border-radius: 18px;
+    padding: 23px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    min-height: 142px;
+    border: 1px solid rgba(70, 100, 70, 0.08);
+}
+
+.stat-sage {
+    background: #e8f0e7;
+}
+
+.stat-mint {
+    background: #e5f3e9;
+}
+
+.stat-sand {
+    background: #f3f0e7;
+}
+
+.stat-icon {
+    font-size: 30px;
+    width: 59px;
+    height: 59px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.65);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent);
+}
+
+.stat-label {
+    font-size: 14px;
+    color: #597265;
+    margin-bottom: 7px;
+}
+
+.stat-value {
+    font-size: 30px;
+    font-weight: 800;
+    letter-spacing: -1px;
+    line-height: 1.15;
+}
+
+.stat-name {
+    font-size: 23px;
+    overflow-wrap: anywhere;
+}
+
+/* BALANSAI IR SKOLOS */
+
+.stack {
+    display: flex;
+    flex-direction: column;
+}
+
+.balance-row,
+.settlement-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 15px 2px;
+    border-bottom: 1px solid var(--line);
+}
+
+.balance-row:last-child,
+.settlement-row:last-child {
+    border-bottom: 0;
+}
+
+.person {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-weight: 650;
+}
+
+.avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 39px;
+    height: 39px;
+    border-radius: 50%;
+    background: #e2efe8;
+    color: var(--accent);
+    font-weight: 800;
+}
+
+.amount-positive {
+    color: #278151;
+}
+
+.amount-negative {
+    color: #b65e56;
+}
+
+.settlement-row strong {
+    color: #278151;
+    white-space: nowrap;
+}
+
+.empty-state {
+    padding: 30px 8px;
+    color: var(--muted);
+    font-size: 14px;
+    text-align: center;
+}
+
+.symbol {
+    font-size: 24px;
+    color: var(--accent);
+}
+
+/* GREITI VEIKSMAI */
+
+.quick-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.quick-action {
+    background: #f1f6f1;
+    color: var(--accent-dark);
+    border: 1px solid #e0e9df;
+    padding: 13px 17px;
+    border-radius: 11px;
+    font-weight: 650;
+}
+
+.quick-action:hover {
+    background: #e4efe5;
+}
+
+/* IŠLAIDŲ LANGAS */
+
+.modal-content {
+    border: 1px solid var(--line);
+    border-radius: 18px;
+}
+
+.modal-header,
+.modal-footer {
+    border-color: var(--line);
+}
+
+/* MAŽESNI EKRANAI */
+
+@media (max-width: 850px) {
+    .header-tag {
+        display: none;
+    }
+
+    .nav-item {
+        padding: 10px;
+    }
+
+    .topbar-inner {
+        flex-wrap: wrap;
+        padding-top: 12px;
+        padding-bottom: 12px;
+    }
+
+    .main-nav {
+        order: 3;
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .panel {
+        padding: 19px;
+    }
+
+    .stat-card {
+        min-height: 120px;
+    }
+}
+
+@media (max-width: 480px) {
+    .shell {
+        padding-left: 15px;
+        padding-right: 15px;
+    }
+
+    .brand {
+        font-size: 23px;
+    }
+
+    .hero h1 {
+        font-size: 29px;
+    }
+
+    .stat-value {
+        font-size: 26px;
+    }
+
+    .settlement-row {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}
+/* PRISIJUNGIMO LANGAS */
+
+.auth-screen {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #edf3ed, #f8faf7);
+    padding: 24px;
+}
+
+.auth-screen.d-none {
+    display: none !important;
+}
+
+.auth-card {
+    width: 100%;
+    max-width: 420px;
+    background: white;
+    border: 1px solid #e0e9e1;
+    border-radius: 20px;
+    padding: 36px;
+    box-shadow: 0 12px 40px rgba(28, 65, 49, 0.08);
+}
+
+.auth-logo {
+    font-size: 32px;
+    font-weight: 800;
+    color: #244b3d;
+    text-align: center;
+}
+
+.auth-subtitle {
+    text-align: center;
+    color: #78857c;
+    margin: 8px 0 28px;
+}
+
+.auth-tabs {
+    display: flex;
+    background: #f0f4f0;
+    border-radius: 12px;
+    padding: 5px;
+    margin-bottom: 24px;
+}
+
+.auth-tab {
+    flex: 1;
+    padding: 11px;
+    border: none;
+    border-radius: 9px;
+    background: transparent;
+    color: #627267;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.auth-tab.active {
+    background: white;
+    color: #286449;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.auth-card .form-control {
+    padding: 12px;
+    border-radius: 10px;
+}
+
+.auth-card .btn-success {
+    background: #326f56;
+    border-color: #326f56;
+    padding: 12px;
+    border-radius: 10px;
+    font-weight: 700;
+}
+
+.auth-card .btn-success:hover {
+    background: #24533f;
+}
