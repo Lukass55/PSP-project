@@ -1,5 +1,8 @@
 from pathlib import Path
 
+from dotenv import load_dotenv
+from pathlib import Path
+
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -14,6 +17,8 @@ from app.routers import auth
 import os
 from starlette.middleware.sessions import SessionMiddleware
 
+
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 app = FastAPI(title="SplitPay")
 
 app.add_middleware(

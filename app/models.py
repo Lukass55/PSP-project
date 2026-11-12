@@ -1,11 +1,15 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, Numeric
 from app.database import Base
 
-class Tenant(Base):
-    __tablename__ = "tenants"
+
+class Account(Base):
+    __tablename__ = "accounts"
 
     id = Column(Integer, primary_key=True)
+    username = Column(String, unique=True, nullable=False)
+    password_hash = Column(String, nullable=False)
     name = Column(String, nullable=False)
+    surname = Column(String, nullable=False)
 
 
 class Group(Base):
@@ -13,7 +17,7 @@ class Group(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False)
-    tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=False)
+    account_id = Column(Integer, ForeignKey("accounts.id"), nullable=False)
 
 
 class User(Base):
@@ -21,8 +25,8 @@ class User(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False)
-    surname = Column(String , nullable=False)
-    tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=False)
+    surname = Column(String, nullable=False)
+    account_id = Column(Integer, ForeignKey("accounts.id"), nullable=False)
 
 
 class GroupMember(Base):
@@ -48,11 +52,3 @@ class ExpenseShare(Base):
     expense_id = Column(Integer, ForeignKey("expenses.id"), nullable=False)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     amount = Column(Numeric(10, 2), nullable=False)
-
-class Account(Base):
-    __tablename__ = "accounts"
-
-    id = Column(Integer, primary_key=True)
-    username = Column(String, unique=True, nullable=False)
-    password_hash = Column(String, nullable=False)
-    tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=False)
