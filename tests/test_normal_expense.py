@@ -1,50 +1,52 @@
 from decimal import Decimal
 
+def test_normal_expense(client, create_group):
+    data = create_group()
 
-def test_normal_expense(client):
-    tenant = client.post(
-        "/tenants",
-        json={"name": "Test Tenant"}
-    )
-    assert tenant.status_code == 200
-    tenant_id = tenant.json()["id"]
+    group_id = data["group_id"]
+    payer_id = data["account"]["user_id"]
 
-    user_ids = []
-
-    for name in ["Lukas", "Tomas", "Matas"]:
-        response = client.post(
-            f"/tenants/{tenant_id}/users",
-            json={"name": name, "surname": "Test"}
-        )
-        assert response.status_code == 200
-        user_ids.append(response.json()["id"])
-
-    group = client.post(
-        f"/tenants/{tenant_id}/groups",
+    response = client.post(
+        f"/groups/{group_id}/expenses",
         json={
-            "name": "Kelionė",
-            "member_ids": user_ids
-        }
-    )
-    assert group.status_code == 200
-    group_id = group.json()["id"]
-
-    expense = client.post(
-        f"/tenants/{tenant_id}/groups/{group_id}/expenses",
-        json={
-            "paid_by": user_ids[0],
+            "paid_by": payer_id,
             "amount": "60.00"
         }
     )
 
-    assert expense.status_code == 200
+    assert response.status_code == 200, response.text
 
-    data = expense.json()
+    expense = response.json()
 
-    assert Decimal(data["amount"]) == Decimal("60.00")
-    assert len(data["shares"]) == 3
+    assert Decimal(expense["amount"]) == Decimal("60.00")
+    assert len(expense["shares"]) == 3
 
-    assert all(
-        Decimal(share["amount"]) == Decimal("20.00")
-        for share in data["shares"]
+    shares = [
+        Decimal(share["amount"])
+        for share in expense["shares"]
+    ]
+
+    assert shares == [
+        Decimal("20.00"),
+        Decimal("20.00"),
+        Decimal("20.00")
+    ]
+
+    balances_response = client.get(
+        f"/groups/{group_id}/balances"
     )
+
+    assert balances_response.status_code == 200
+
+    balances = balances_response.json()["balances"]
+
+    assert len(balances) == 3
+
+    payer = next(
+        person for person in balances
+        if person["user_id"] == payer_id
+    )
+
+    assert Decimal(payer["total_paid"]) == Decimal("60.00")
+    assert Decimal(payer["total_share"]) == Decimal("20.00")
+    assert Decimal(payer["balance"]) == Decimal("40.00")

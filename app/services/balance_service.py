@@ -8,31 +8,25 @@ from app.models import Group, GroupMember, User, Expense, ExpenseShare
 
 def calculate_group_balances(
     db: Session,
-    tenant_id: int,
+    account_id: int,
     group_id: int
 ):
-    # Patikriname, ar grupė priklauso klientui
     group = db.query(Group).filter(
         Group.id == group_id,
-        Group.tenant_id == tenant_id
+        Group.account_id == account_id
     ).first()
 
     if group is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Grupė nerasta"
-        )
+        raise HTTPException(404, "Grupė nerasta")
 
-    # Gauname grupės narius
     members = db.query(User).join(
         GroupMember,
         User.id == GroupMember.user_id
     ).filter(
         GroupMember.group_id == group_id,
-        User.tenant_id == tenant_id
+        User.account_id == account_id
     ).order_by(User.id).all()
 
-    # Gauname visas grupės išlaidas
     expenses = db.query(Expense).filter(
         Expense.group_id == group_id
     ).all()
@@ -65,6 +59,7 @@ def calculate_group_balances(
             "total_share": str(total_share),
             "balance": str(balance)
         })
+
     settlements = calculate_settlements(balances)
 
     return {
@@ -73,6 +68,7 @@ def calculate_group_balances(
         "balances": balances,
         "settlements": settlements
     }
+
 
 def calculate_settlements(balances: list[dict]) -> list[dict]:
     debtors = []
@@ -98,15 +94,20 @@ def calculate_settlements(balances: list[dict]) -> list[dict]:
             })
 
     settlements = []
-
     debtor_index = 0
     creditor_index = 0
 
-    while debtor_index < len(debtors) and creditor_index < len(creditors):
+    while (
+        debtor_index < len(debtors)
+        and creditor_index < len(creditors)
+    ):
         debtor = debtors[debtor_index]
         creditor = creditors[creditor_index]
 
-        amount = min(debtor["amount"], creditor["amount"])
+        amount = min(
+            debtor["amount"],
+            creditor["amount"]
+        )
 
         settlements.append({
             "from_user_id": debtor["user_id"],

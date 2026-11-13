@@ -7,17 +7,21 @@ const euro = value =>
     }) + " €";
 
 let selectedData = null;
-let currentTenantId = null;
+let currentAccount = null;
+let authMode = "login";
 
 function notify(text, kind = "danger", id = "globalMessage") {
     const node = el(id);
+    if (!node) return;
     node.textContent = text;
     node.className = `alert alert-${kind} mt-3`;
 }
 
 function clearNotice(id) {
-    el(id).className = "d-none";
-    el(id).textContent = "";
+    const node = el(id);
+    if (!node) return;
+    node.className = "d-none";
+    node.textContent = "";
 }
 
 function showPage(page) {
@@ -45,36 +49,33 @@ function clearGroup() {
     el("memberCount").textContent = "Pasirinkite grupę";
     el("balancesList").replaceChildren();
     el("settlementsList").replaceChildren();
+    el("payerId").replaceChildren();
 }
 
-async function request(url, options) {
-    const response = await fetch(url, options);
+async function request(url, options = {}) {
+    const response = await fetch(url, {
+        credentials: "same-origin",
+        ...options
+    });
+
     const data = await response.json();
 
     if (!response.ok) {
-        throw new Error(
-            typeof data.detail === "string"
-                ? data.detail
-                : "Užklausa nepavyko."
-        );
+        const detail = data.detail;
+        throw new Error(typeof detail === "string" ? detail : "Užklausa nepavyko.");
     }
 
     return data;
 }
 
-// GRUPIŲ SĄRAŠAS
 async function loadGroups(selectId = null) {
-    const tenantId = currentTenantId;
     const select = el("groupId");
-
     clearGroup();
     select.replaceChildren();
     addOption(select, "", "Pasirinkite grupę");
 
-    if (!tenantId) return;
-
     try {
-        const groups = await request(`/tenants/${tenantId}/groups`);
+        const groups = await request("/groups");
 
         groups.forEach(group => {
             addOption(select, group.id, group.name);
@@ -93,7 +94,6 @@ async function loadGroups(selectId = null) {
     }
 }
 
-// BALANSO EILUTĖ
 function makeBalance(person) {
     const item = document.createElement("div");
     item.className = "balance-row";
@@ -112,7 +112,6 @@ function makeBalance(person) {
 
     const amount = document.createElement("strong");
     const balance = Number(person.balance);
-
     amount.className = balance >= 0 ? "amount-positive" : "amount-negative";
     amount.textContent = (balance > 0 ? "+" : "") + euro(balance);
 
@@ -120,15 +119,12 @@ function makeBalance(person) {
     return item;
 }
 
-// SKOLOS EILUTĖ
 function makeSettlement(settlement) {
     const row = document.createElement("div");
     row.className = "settlement-row";
 
     const names = document.createElement("span");
-    names.textContent =
-        `${settlement.from_name} ${settlement.from_surname} → ` +
-        `${settlement.to_name} ${settlement.to_surname}`;
+    names.textContent = `${settlement.from_name} ${settlement.from_surname} → ${settlement.to_name} ${settlement.to_surname}`;
 
     const amount = document.createElement("strong");
     amount.textContent = euro(settlement.amount);
@@ -137,35 +133,24 @@ function makeSettlement(settlement) {
     return row;
 }
 
-// GRUPĖS BALANSAI
 async function loadBalances() {
-    const tenantId = currentTenantId;
     const groupId = el("groupId").value;
-
     clearNotice("globalMessage");
 
-    if (!tenantId || !groupId) {
+    if (!groupId) {
         notify("Pirmiausia pasirinkite grupę.");
         return;
     }
 
     try {
-        const data = await request(
-            `/tenants/${tenantId}/groups/${groupId}/balances`
-        );
-
+        const data = await request(`/groups/${groupId}/balances`);
         selectedData = data;
 
         el("activeGroup").textContent = data.group_name;
         el("memberCount").textContent = `${data.balances.length} nariai`;
 
-        const total = data.balances.reduce(
-            (sum, person) => sum + Number(person.total_paid), 0
-        );
-
-        const positive = data.balances.reduce(
-            (sum, person) => sum + Math.max(0, Number(person.balance)), 0
-        );
+        const total = data.balances.reduce((sum, person) => sum + Number(person.total_paid), 0);
+        const positive = data.balances.reduce((sum, person) => sum + Math.max(0, Number(person.balance)), 0);
 
         el("totalExpenses").textContent = euro(total);
         el("positiveBalances").textContent = euro(positive);
@@ -184,26 +169,23 @@ async function loadBalances() {
         });
 
         if (data.settlements.length === 0) {
-        const empty = document.createElement("div");
-        empty.className = "empty-state";
-        empty.textContent = "Visi atsiskaitę!";
-
-        settlements.append(empty);
+            const empty = document.createElement("div");
+            empty.className = "empty-state";
+            empty.textContent = "Visi atsiskaitę!";
+            settlements.append(empty);
         } else {
-        data.settlements.forEach(settlement => {
-        settlements.append(makeSettlement(settlement));
-        });
+            data.settlements.forEach(settlement => {
+                settlements.append(makeSettlement(settlement));
+            });
         }
 
         showPage("home");
-
     } catch (error) {
         clearGroup();
         notify("Nepavyko parodyti balansų: " + error.message);
     }
 }
 
-// IŠLAIDŲ LANGAS
 function openExpense() {
     if (!selectedData) {
         notify("Pirmiausia pasirinkite grupę ir spauskite „Rodyti“.");
@@ -211,58 +193,36 @@ function openExpense() {
     }
 
     clearNotice("expenseMessage");
-
-    bootstrap.Modal.getOrCreateInstance(
-        el("expenseModal")
-    ).show();
+    bootstrap.Modal.getOrCreateInstance(el("expenseModal")).show();
 }
 
 el("groupId").addEventListener("change", clearGroup);
 
-// NAUJOS IŠLAIDOS IŠSAUGOJIMAS
 el("expenseForm").addEventListener("submit", async event => {
     event.preventDefault();
-
-    const tenantId = currentTenantId;
     const groupId = el("groupId").value;
 
     try {
-        await request(
-            `/tenants/${tenantId}/groups/${groupId}/expenses`,
-            {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({
-                    paid_by: Number(el("payerId").value),
-                    amount: el("expenseAmount").value
-                })
-            }
-        );
+        await request(`/groups/${groupId}/expenses`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                paid_by: Number(el("payerId").value),
+                amount: el("expenseAmount").value
+            })
+        });
 
         el("expenseAmount").value = "";
-
-        bootstrap.Modal.getOrCreateInstance(
-            el("expenseModal")
-        ).hide();
-
+        bootstrap.Modal.getOrCreateInstance(el("expenseModal")).hide();
         await loadBalances();
         notify("Išlaida sėkmingai pridėta!", "success");
-
     } catch (error) {
         notify(error.message, "danger", "expenseMessage");
     }
 });
 
-// NAUJO VARTOTOJO KŪRIMAS
 el("userForm").addEventListener("submit", async event => {
     event.preventDefault();
-
-    const tenantId = currentTenantId;
-
-    if (!tenantId) {
-        notify("Nepavyko nustatyti prisijungusio vartotojo.", "danger", "userMessage");
-        return;
-    }
 
     try {
         const name = el("userName").value.trim();
@@ -272,42 +232,35 @@ el("userForm").addEventListener("submit", async event => {
             throw new Error("Įveskite vardą ir pavardę.");
         }
 
-        await request(`/tenants/${tenantId}/users`, {
+        await request("/users", {
             method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({name, surname})
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name, surname })
         });
 
         await loadUsers();
-
         el("userName").value = "";
         el("userSurname").value = "";
-
         notify("Vartotojas sėkmingai sukurtas!", "success", "userMessage");
-
     } catch (error) {
         notify(error.message, "danger", "userMessage");
     }
 });
+
 async function loadUsers() {
-    const tenantId = currentTenantId;
     const container = el("availableUsers");
     container.replaceChildren();
 
-    if (!tenantId) {
-        container.textContent = "Nepavyko nustatyti prisijungusio vartotojo.";
-        return;
-    }
-
     try {
-        const users = await request(`/tenants/${tenantId}/users`);
+        const users = await request("/users");
+        const otherUsers = users.filter(user => user.id !== currentAccount?.user_id);
 
-        if (users.length === 0) {
-            container.textContent = "Dar neturite pridėtų narių.";
+        if (otherUsers.length === 0) {
+            container.textContent = "Pridėkite bent vieną kitą žmogų.";
             return;
         }
 
-        users.forEach(user => {
+        otherUsers.forEach(user => {
             const label = document.createElement("label");
             label.className = "d-block mb-2";
 
@@ -317,11 +270,7 @@ async function loadUsers() {
             checkbox.value = user.id;
             checkbox.name = "groupMember";
 
-            label.append(
-                checkbox,
-                document.createTextNode(`${user.name} ${user.surname}`)
-            );
-
+            label.append(checkbox, document.createTextNode(`${user.name} ${user.surname}`));
             container.appendChild(label);
         });
     } catch (error) {
@@ -329,169 +278,105 @@ async function loadUsers() {
     }
 }
 
-
 el("groupForm").addEventListener("submit", async event => {
     event.preventDefault();
-
-    const tenantId = currentTenantId;
     const name = el("newGroupName").value.trim();
+    const memberIds = [...document.querySelectorAll('input[name="groupMember"]:checked')].map(input => Number(input.value));
 
-    const memberIds = [
-        ...document.querySelectorAll(
-            'input[name="groupMember"]:checked'
-        )
-    ].map(input => Number(input.value));
-
-    if (!tenantId) {
-        notify("Nepavyko nustatyti prisijungusio vartotojo.", "danger", "groupMessage");
+    if (!name) {
+        notify("Įveskite grupės pavadinimą.", "danger", "groupMessage");
         return;
     }
 
-    if (memberIds.length < 2) {
-        notify(
-            "Pasirinkite bent du grupės narius.",
-            "danger",
-            "groupMessage"
-        );
+    if (memberIds.length < 1) {
+        notify("Pasirinkite bent vieną papildomą narį.", "danger", "groupMessage");
         return;
     }
 
     try {
-        const group = await request(
-            `/tenants/${tenantId}/groups`,
-            {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({
-                    name: name,
-                    member_ids: memberIds
-                })
-            }
-        );
+        const group = await request("/groups", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name, member_ids: memberIds })
+        });
 
         el("newGroupName").value = "";
+        document.querySelectorAll('input[name="groupMember"]:checked').forEach(input => {
+            input.checked = false;
+        });
 
         await loadGroups(group.id);
         await loadBalances();
-
-        notify(
-            "Grupė sėkmingai sukurta!",
-            "success",
-            "groupMessage"
-        );
-
+        notify("Grupė sėkmingai sukurta!", "success", "groupMessage");
     } catch (error) {
         notify(error.message, "danger", "groupMessage");
     }
 });
+
 async function resetGroup() {
-    const tenantId = currentTenantId;
     const groupId = el("groupId").value;
 
-    if (!tenantId || !groupId) {
-        notify(
-            "Pirmiausia pasirinkite grupę.",
-            "danger",
-            "resetMessage"
-        );
+    if (!groupId) {
+        notify("Pirmiausia pasirinkite grupę.", "danger", "resetMessage");
         return;
     }
 
-    const groupName =
-        el("groupId").selectedOptions[0].textContent;
-
-    const confirmed = confirm(
-        `Ar tikrai norite ištrinti visas grupės „${groupName}“ išlaidas?\n\n` +
-        "Šio veiksmo atšaukti negalėsite."
-    );
+    const groupName = el("groupId").selectedOptions[0].textContent;
+    const confirmed = confirm(`Ar tikrai norite ištrinti visas grupės „${groupName}“ išlaidas?\n\nŠio veiksmo atšaukti negalėsite.`);
 
     if (!confirmed) return;
 
     try {
-        const result = await request(
-            `/tenants/${tenantId}/groups/${groupId}/expenses`,
-            {method: "DELETE"}
-        );
-
+        const result = await request(`/groups/${groupId}/expenses`, { method: "DELETE" });
         await loadBalances();
-
-        notify(
-            `Grupė išvalyta. Ištrinta išlaidų: ${result.deleted_expenses}.`,
-            "success",
-            "globalMessage"
-        );
-
+        notify(`Grupė išvalyta. Ištrinta išlaidų: ${result.deleted_expenses}.`, "success", "globalMessage");
     } catch (error) {
         notify(error.message, "danger", "resetMessage");
     }
 }
-// PRISIJUNGIMAS IR REGISTRACIJA
-
-let authMode = "login";
 
 function switchAuth(mode) {
     authMode = mode;
-
-    document.getElementById("loginTab")
-        .classList.toggle("active", mode === "login");
-
-    document.getElementById("registerTab")
-        .classList.toggle("active", mode === "register");
-
-    document.getElementById("confirmPasswordBox")
-        .classList.toggle("d-none", mode !== "register");
-
-    document.getElementById("authSubmit").textContent =
-        mode === "login" ? "Prisijungti" : "Sukurti paskyrą";
-
-    document.getElementById("authPassword").autocomplete =
-        mode === "login" ? "current-password" : "new-password";
-
-    document.getElementById("authMessage").classList.add("d-none");
+    el("loginTab").classList.toggle("active", mode === "login");
+    el("registerTab").classList.toggle("active", mode === "register");
+    el("registerFields").classList.toggle("d-none", mode !== "register");
+    el("confirmPasswordBox").classList.toggle("d-none", mode !== "register");
+    el("authSubmit").textContent = mode === "login" ? "Prisijungti" : "Sukurti paskyrą";
+    el("authPassword").autocomplete = mode === "login" ? "current-password" : "new-password";
+    el("authPassword").minLength = mode === "login" ? 1 : 8;
+    el("authName").required = mode === "register";
+    el("authSurname").required = mode === "register";
+    el("authPasswordConfirm").required = mode === "register";
+    clearNotice("authMessage");
 }
 
 function showAuthMessage(message, isError = true) {
-    const box = document.getElementById("authMessage");
-
+    const box = el("authMessage");
     box.textContent = message;
-    box.className = isError
-        ? "alert alert-danger mt-3"
-        : "alert alert-success mt-3";
+    box.className = isError ? "alert alert-danger mt-3" : "alert alert-success mt-3";
 }
 
 async function showLoggedInApp(account) {
-    document.getElementById("authScreen").classList.add("d-none");
-    document.getElementById("appScreen").classList.remove("d-none");
-
-    currentTenantId = account.tenant_id;
-    if (!currentTenantId) {
-        notify("Paskyra neturi priskirtos darbo erdvės.");
-        return;
-    }
+    currentAccount = account;
+    el("authScreen").classList.add("d-none");
+    el("appScreen").classList.remove("d-none");
+    clearNotice("globalMessage");
     await loadGroups();
     await loadUsers();
 }
 
 async function logout() {
     try {
-        const response = await fetch("/auth/logout", {
-            method: "POST"
-        });
-
-        if (!response.ok) {
-            throw new Error("Nepavyko atsijungti");
-        }
-
-        document.getElementById("appScreen").classList.add("d-none");
-        document.getElementById("authScreen").classList.remove("d-none");
-
-        currentTenantId = null;
+        await request("/auth/logout", { method: "POST" });
+        currentAccount = null;
+        el("appScreen").classList.add("d-none");
+        el("authScreen").classList.remove("d-none");
         clearGroup();
         el("groupId").replaceChildren();
         el("availableUsers").replaceChildren();
-        document.getElementById("authForm").reset();
+        el("authForm").reset();
+        showPage("home");
         switchAuth("login");
-
     } catch (error) {
         alert(error.message);
     }
@@ -499,76 +384,62 @@ async function logout() {
 
 async function checkLogin() {
     try {
-        const response = await fetch("/auth/me");
-
-        if (!response.ok) {
-            throw new Error("Neprisijungęs");
-        }
-
-        const account = await response.json();
+        const account = await request("/auth/me");
         await showLoggedInApp(account);
-
     } catch {
-        document.getElementById("appScreen").classList.add("d-none");
-        document.getElementById("authScreen").classList.remove("d-none");
+        currentAccount = null;
+        el("appScreen").classList.add("d-none");
+        el("authScreen").classList.remove("d-none");
     }
 }
 
-document.getElementById("authForm").addEventListener(
-    "submit",
-    async function(event) {
-        event.preventDefault();
+el("authForm").addEventListener("submit", async event => {
+    event.preventDefault();
 
-        const username = document.getElementById("authUsername").value.trim();
-        const password = document.getElementById("authPassword").value;
-        const confirmPassword =
-            document.getElementById("authPasswordConfirm").value;
+    const username = el("authUsername").value.trim();
+    const password = el("authPassword").value;
+    const name = el("authName").value.trim();
+    const surname = el("authSurname").value.trim();
+    const confirmPassword = el("authPasswordConfirm").value;
 
-        if (authMode === "register" && password !== confirmPassword) {
+    if (authMode === "register") {
+        if (!name || !surname) {
+            showAuthMessage("Įveskite vardą ir pavardę.");
+            return;
+        }
+        if (password !== confirmPassword) {
             showAuthMessage("Slaptažodžiai nesutampa.");
             return;
         }
-
-        const endpoint = authMode === "login"
-            ? "/auth/login"
-            : "/auth/register";
-
-        try {
-            const response = await fetch(endpoint, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({username, password})
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                const detail = data.detail;
-                throw new Error(
-                    typeof detail === "string"
-                        ? detail
-                        : "Nepavyko atlikti veiksmo."
-                );
-            }
-
-            if (authMode === "register") {
-                switchAuth("login");
-                showAuthMessage(
-                    "Paskyra sukurta! Dabar prisijunkite.",
-                    false
-                );
-                return;
-            }
-
-            await showLoggedInApp(data);
-
-        } catch (error) {
-            showAuthMessage(error.message);
-        }
     }
-);
 
-// Patikriname sesiją atidarius puslapį
+    const endpoint = authMode === "login" ? "/auth/login" : "/auth/register";
+    const payload = { username, password };
+
+    if (authMode === "register") {
+        payload.name = name;
+        payload.surname = surname;
+    }
+
+    try {
+        await request(endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+
+        if (authMode === "register") {
+            el("authForm").reset();
+            switchAuth("login");
+            showAuthMessage("Paskyra sukurta! Dabar prisijunkite.", false);
+            return;
+        }
+
+        const account = await request("/auth/me");
+        await showLoggedInApp(account);
+    } catch (error) {
+        showAuthMessage(error.message);
+    }
+});
+
 checkLogin();

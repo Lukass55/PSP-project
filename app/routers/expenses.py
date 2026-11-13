@@ -1,56 +1,70 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.models import Account, Group, Expense, ExpenseShare
 from app.schemas import ExpenseCreate
-from app.services.expense_service import create_expense as create_expense_service
-
-from fastapi import HTTPException
-from app.models import Group, Expense, ExpenseShare
+from app.services.expense_service import (
+    create_expense as create_expense_service
+)
 
 router = APIRouter(tags=["Expenses"])
 
 
+def get_current_account(request: Request, db: Session):
+    account_id = request.session.get("account_id")
 
-@router.post("/tenants/{tenant_id}/groups/{group_id}/expenses")
+    if account_id is None:
+        raise HTTPException(401, "Turite prisijungti")
+
+    account = db.query(Account).filter(
+        Account.id == account_id
+    ).first()
+
+    if account is None:
+        raise HTTPException(401, "Paskyra nerasta")
+
+    return account
+
+
+@router.post("/groups/{group_id}/expenses")
 def create_expense(
-    tenant_id: int,
     group_id: int,
     expense: ExpenseCreate,
+    request: Request,
     db: Session = Depends(get_db)
 ):
+    account = get_current_account(request, db)
+
     return create_expense_service(
         db=db,
-        tenant_id=tenant_id,
+        account_id=account.id,
         group_id=group_id,
         expense=expense
     )
-@router.delete("/tenants/{tenant_id}/groups/{group_id}/expenses")
+
+
+@router.delete("/groups/{group_id}/expenses")
 def reset_group_expenses(
-    tenant_id: int,
     group_id: int,
+    request: Request,
     db: Session = Depends(get_db)
 ):
-    group = (
-        db.query(Group)
-        .filter(
-            Group.id == group_id,
-            Group.tenant_id == tenant_id
-        )
-        .first()
-    )
+    account = get_current_account(request, db)
+
+    group = db.query(Group).filter(
+        Group.id == group_id,
+        Group.account_id == account.id
+    ).first()
 
     if group is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Grupė nerasta"
-        )
+        raise HTTPException(404, "Grupė nerasta")
 
     expense_ids = [
         expense.id
-        for expense in db.query(Expense)
-        .filter(Expense.group_id == group_id)
-        .all()
+        for expense in db.query(Expense).filter(
+            Expense.group_id == group_id
+        ).all()
     ]
 
     try:
@@ -64,6 +78,7 @@ def reset_group_expenses(
             ).delete(synchronize_session=False)
 
         db.commit()
+
     except Exception:
         db.rollback()
         raise

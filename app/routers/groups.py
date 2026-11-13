@@ -1,97 +1,104 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Tenant, User, Group, GroupMember
+from app.models import Account, User, Group, GroupMember
 from app.schemas import GroupCreate
-
 
 router = APIRouter(tags=["Groups"])
 
-@router.get("/tenants/{tenant_id}/groups")
-def get_groups(tenant_id: int, db: Session = Depends(get_db)):
-    groups = (
-        db.query(Group)
-        .filter(Group.tenant_id == tenant_id)
-        .order_by(Group.id)
-        .all()
-    )
+
+def get_current_account(request: Request, db: Session):
+    account_id = request.session.get("account_id")
+
+    if account_id is None:
+        raise HTTPException(401, "Turite prisijungti")
+
+    account = db.query(Account).filter(
+        Account.id == account_id
+    ).first()
+
+    if account is None:
+        raise HTTPException(401, "Paskyra nerasta")
+
+    return account
+
+
+@router.get("/groups")
+def get_groups(
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    account = get_current_account(request, db)
+
+    groups = db.query(Group).filter(
+        Group.account_id == account.id
+    ).order_by(Group.id).all()
 
     return [
-        {
-            "id": group.id,
-            "name": group.name
-        }
+        {"id": group.id, "name": group.name}
         for group in groups
     ]
 
-@router.post("/tenants/{tenant_id}/groups")
+
+@router.post("/groups", status_code=201)
 def create_group(
-    tenant_id: int,
     group: GroupCreate,
+    request: Request,
     db: Session = Depends(get_db)
 ):
-    # Patikriname, ar klientas egzistuoja
-    tenant = db.query(Tenant).filter(
-        Tenant.id == tenant_id
-    ).first()
-
-    if tenant is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Klientas nerastas"
-        )
+    account = get_current_account(request, db)
 
     name = group.name.strip()
 
     if not name:
         raise HTTPException(
-            status_code=400,
-            detail="Grupės pavadinimas negali būti tuščias"
+            400, "Grupės pavadinimas negali būti tuščias"
         )
 
-    # Grupėje turi būti bent 2 skirtingi žmonės
-    if len(group.member_ids) < 2:
+    if account.user_id is None:
         raise HTTPException(
-            status_code=400,
-            detail="Grupėje turi būti bent 2 žmonės"
+            400, "Paskyra neturi susieto vartotojo"
         )
 
     if len(group.member_ids) != len(set(group.member_ids)):
         raise HTTPException(
-            status_code=400,
-            detail="Tas pats žmogus negali kartotis"
+            400, "Tas pats žmogus negali kartotis"
         )
 
-    # Visi nariai turi priklausyti tam pačiam klientui
+    # Kūrėją automatiškai įtraukiame į grupę
+    member_ids = set(group.member_ids)
+    member_ids.add(account.user_id)
+
+    if len(member_ids) < 2:
+        raise HTTPException(
+            400, "Grupėje turi būti bent 2 žmonės"
+        )
+
+    # Patikriname, ar visi nariai priklauso paskyrai
     users = db.query(User).filter(
-        User.id.in_(group.member_ids),
-        User.tenant_id == tenant_id
+        User.id.in_(member_ids),
+        User.account_id == account.id
     ).all()
 
-    if len(users) != len(group.member_ids):
+    if len(users) != len(member_ids):
         raise HTTPException(
-            status_code=400,
-            detail="Visi grupės nariai turi būti pridėti prie šio kliento"
+            400, "Pasirinkti žmonės nepriklauso jūsų paskyrai"
         )
 
-    # Sukuriame grupę
     new_group = Group(
         name=name,
-        tenant_id=tenant_id
+        account_id=account.id
     )
 
     db.add(new_group)
     db.flush()
 
-    # Pridedame grupės narius
     for user in users:
-        db.add(
-            GroupMember(
-                group_id=new_group.id,
-                user_id=user.id
-            )
-        )
+        db.add(GroupMember(
+            group_id=new_group.id,
+            user_id=user.id
+        ))
 
     db.commit()
     db.refresh(new_group)
@@ -99,6 +106,6 @@ def create_group(
     return {
         "id": new_group.id,
         "name": new_group.name,
-        "tenant_id": new_group.tenant_id,
-        "member_ids": group.member_ids
+        "account_id": account.id,
+        "member_ids": sorted(member_ids)
     }

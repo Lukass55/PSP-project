@@ -8,16 +8,9 @@ class Account(Base):
     id = Column(Integer, primary_key=True)
     username = Column(String, unique=True, nullable=False)
     password_hash = Column(String, nullable=False)
-    name = Column(String, nullable=False)
-    surname = Column(String, nullable=False)
-
-
-class Group(Base):
-    __tablename__ = "groups"
-
-    id = Column(Integer, primary_key=True)
-    name = Column(String, nullable=False)
-    account_id = Column(Integer, ForeignKey("accounts.id"), nullable=False)
+    name = Column(String, nullable=True)
+    surname = Column(String, nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
 
 
 class User(Base):
@@ -26,14 +19,38 @@ class User(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False)
     surname = Column(String, nullable=False)
-    account_id = Column(Integer, ForeignKey("accounts.id"), nullable=False)
+    account_id = Column(
+        Integer,
+        ForeignKey("accounts.id"),
+        nullable=False
+    )
+
+
+class Group(Base):
+    __tablename__ = "groups"
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False)
+    account_id = Column(
+        Integer,
+        ForeignKey("accounts.id"),
+        nullable=False
+    )
 
 
 class GroupMember(Base):
     __tablename__ = "group_members"
 
-    group_id = Column(Integer, ForeignKey("groups.id"), primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
+    group_id = Column(
+        Integer,
+        ForeignKey("groups.id"),
+        primary_key=True
+    )
+    user_id = Column(
+        Integer,
+        ForeignKey("users.id"),
+        primary_key=True
+    )
 
 
 class Expense(Base):

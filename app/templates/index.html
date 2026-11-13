@@ -1,317 +1,232 @@
 <!DOCTYPE html>
 <html lang="lt">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>SplitPay – išlaidų valdymas</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>SplitPay – išlaidų valdymas</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-<!-- PRISIJUNGIMO IR REGISTRACIJOS LANGAS -->
+
 <div id="authScreen" class="auth-screen d-none">
-  <div class="auth-card">
+    <div class="auth-card">
+        <div class="auth-logo">SplitPay</div>
+        <p class="auth-subtitle">Bendros išlaidos – paprasčiau.</p>
 
-    <div class="auth-logo">SplitPay</div>
-    <p class="auth-subtitle">
-      Bendros išlaidos – paprasčiau.
-    </p>
+        <div class="auth-tabs">
+            <button type="button" id="loginTab" class="auth-tab active" onclick="switchAuth('login')">Prisijungti</button>
+            <button type="button" id="registerTab" class="auth-tab" onclick="switchAuth('register')">Registruotis</button>
+        </div>
 
-    <div class="auth-tabs">
-      <button type="button" id="loginTab"
-              class="auth-tab active"
-              onclick="switchAuth('login')">
-        Prisijungti
-      </button>
+        <form id="authForm">
+            <label for="authUsername" class="form-label">Naudotojo vardas</label>
+            <input id="authUsername" class="form-control mb-3" autocomplete="username" required minlength="3">
 
-      <button type="button" id="registerTab"
-              class="auth-tab"
-              onclick="switchAuth('register')">
-        Registruotis
-      </button>
-    </div>
+            <div id="registerFields" class="d-none">
+                <label for="authName" class="form-label">Vardas</label>
+                <input id="authName" class="form-control mb-3" autocomplete="given-name" maxlength="50">
 
-    <form id="authForm">
-      <label for="authUsername" class="form-label">
-        Naudotojo vardas
-      </label>
-      <input id="authUsername" class="form-control mb-3"
-             autocomplete="username" required minlength="3">
-
-      <label for="authPassword" class="form-label">
-        Slaptažodis
-      </label>
-      <input id="authPassword" type="password"
-             class="form-control mb-3"
-             autocomplete="current-password" required minlength="8">
-
-      <div id="confirmPasswordBox" class="d-none">
-        <label for="authPasswordConfirm" class="form-label">
-          Pakartokite slaptažodį
-        </label>
-        <input id="authPasswordConfirm" type="password"
-               class="form-control mb-3"
-               autocomplete="new-password">
-      </div>
-
-      <button id="authSubmit" type="submit"
-              class="btn btn-success w-100">
-        Prisijungti
-      </button>
-    </form>
-
-    <div id="authMessage" class="mt-3 d-none"></div>
-
-  </div>
-</div>
-
-<!-- ESAMAS SPLITPAY PUSLAPIS -->
-<div id="appScreen" class="d-none">
-<header class="topbar">
-  <div class="shell topbar-inner">
-    <a href="#" class="brand" onclick="showPage('home'); return false">
-       SplitPay
-    </a>
-
-    <nav class="main-nav">
-      <button class="nav-item active" data-page="home" onclick="showPage('home')">Pagrindinis</button>
-      <button class="nav-item" data-page="manage" onclick="showPage('manage')">Valdymas</button>
-        <button
-    id="logoutBtn" type="button" class="btn btn-outline-danger btn-sm ms-3" onclick="logout()">Atsijungti</button>
-<!--      <button class="nav-item" data-page="debts" onclick="showPage('debts')">Skolos</button>-->
-    </nav>
-  </div>
-</header>
-
-<main class="shell py-4 py-lg-5">
-
-  <div id="globalMessage" class="alert d-none"></div>
-
-  <section class="hero d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
-    <div>
-      <div class="eyebrow">TAVO FINANSAI, PAPRASČIAU</div>
-      <h1>Sveiki sugrįžę į SplitPay!</h1>
-      <p>Tvarkykite bendras išlaidas ir matykite, kas kam skolingas.</p>
-    </div>
-    <button class="btn btn-primary btn-lg" onclick="openExpense()">＋ Pridėti išlaidą/-as</button>
-  </section>
-
-  <section class="panel mb-4">
-    <div class="panel-heading"><h2>Pasirinkite grupę</h2></div>
-    <div class="row g-3 align-items-end">
-      <div class="col-md-10">
-        <label class="form-label" for="groupId">Grupė</label>
-        <select class="form-select" id="groupId">
-          <option value="">Pasirinkite grupę</option>
-        </select>
-      </div>
-      <div class="col-md-2">
-        <button class="btn btn-primary w-100" onclick="loadBalances()">Rodyti</button>
-      </div>
-    </div>
-  </section>
-
-  <!-- PAGRINDINIS PUSLAPIS -->
-  <section id="homePage">
-
-    <div class="row g-3 mb-4">
-      <div class="col-md-4">
-        <article class="stat-card stat-sage">
-          <div>
-            <div class="stat-label">Bendros išlaidos</div>
-            <div class="stat-value" id="totalExpenses">—</div>
-          </div>
-        </article>
-      </div>
-
-      <div class="col-md-4">
-        <article class="stat-card stat-mint">
-          <div>
-            <div class="stat-label">Teigiami balansai</div>
-            <div class="stat-value" id="positiveBalances">—</div>
-          </div>
-        </article>
-      </div>
-
-      <div class="col-md-4">
-        <article class="stat-card stat-sand">
-          <div>
-            <div class="stat-label">Aktyvi grupė</div>
-            <div class="stat-value stat-name" id="activeGroup">Nepasirinkta</div>
-          </div>
-        </article>
-      </div>
-    </div>
-
-    <div class="row g-4">
-      <div class="col-lg-7">
-        <section class="panel h-100">
-          <div class="panel-heading">
-            <h2>Grupės balansai</h2>
-            <span class="subtle" id="memberCount">Pasirinkite grupę</span>
-          </div>
-          <div id="balancesList" class="stack">
-            <div class="empty-state">Pasirinkite grupę.</div>
-          </div>
-        </section>
-      </div>
-
-      <div class="col-lg-5">
-        <section class="panel h-100">
-          <div class="panel-heading">
-            <h2>Kas kam skolingas?</h2>
-            <span class="symbol">⇄</span>
-          </div>
-          <div id="settlementsList" class="stack">
-            <div class="empty-state">Skolos bus rodomos pasirinkus grupę.</div>
-          </div>
-        </section>
-      </div>
-    </div>
-
-      <section class="panel mt-4">
-  <div class="panel-heading">
-    <h2>Grupės išlaidų valdymas</h2>
-  </div>
-
-  <p class="subtle">
-    Ištrinkite visas pasirinktos grupės išlaidas.
-    Grupė ir jos nariai išliks, o balansai taps nuliniai.
-  </p>
-
-  <button
-    id="resetGroupButton"
-    type="button"
-    class="btn btn-outline-danger"
-    onclick="resetGroup()"
-  >
-    Išvalyti grupės išlaidas
-  </button>
-
-  <div id="resetMessage" class="mt-3 d-none"></div>
-</section>
-
-<!--    <section class="panel mt-4">-->
-<!--      <div class="panel-heading"><h2>Greiti veiksmai</h2></div>-->
-<!--      <div class="quick-actions">-->
-<!--        <button class="quick-action" onclick="showPage('manage')">♧ Kurti klientą ar vartotoją</button>-->
-<!--        <button class="quick-action" onclick="showPage('debts')">⇄ Peržiūrėti skolas</button>-->
-<!--      </div>-->
-<!--    </section>-->
-
-  </section>
-
-  <!-- VALDYMO PUSLAPIS -->
-  <section id="managePage" class="d-none">
-    <div class="section-intro">
-      <h2>Narių ir grupių valdymas</h2>
-    </div>
-
-    <div class="row g-4">
-
-      <div class="col-lg-6">
-        <section class="panel h-100">
-          <div class="panel-heading"><h2>＋ Naujas vartotojas</h2></div>
-          <p class="subtle">Narys bus pridėtas prie jūsų paskyros darbo erdvės.</p>
-
-          <form id="userForm">
-            <div class="row g-3 mb-3">
-              <div class="col-sm-6">
-                <label for="userName" class="form-label">Vardas</label>
-                <input id="userName" class="form-control" required>
-              </div>
-              <div class="col-sm-6">
-                <label for="userSurname" class="form-label">Pavardė</label>
-                <input id="userSurname" class="form-control" required>
-              </div>
+                <label for="authSurname" class="form-label">Pavardė</label>
+                <input id="authSurname" class="form-control mb-3" autocomplete="family-name" maxlength="50">
             </div>
 
-            <button class="btn btn-primary" type="submit">Pridėti vartotoją</button>
-          </form>
+            <label for="authPassword" class="form-label">Slaptažodis</label>
+            <input id="authPassword" type="password" class="form-control mb-3" autocomplete="current-password" required minlength="1">
 
-          <div id="userMessage" class="mt-3 d-none"></div>
-        </section>
-      </div>
+            <div id="confirmPasswordBox" class="d-none">
+                <label for="authPasswordConfirm" class="form-label">Pakartokite slaptažodį</label>
+                <input id="authPasswordConfirm" type="password" class="form-control mb-3" autocomplete="new-password">
+            </div>
 
+            <button id="authSubmit" type="submit" class="btn btn-success w-100">Prisijungti</button>
+        </form>
+
+        <div id="authMessage" class="mt-3 d-none"></div>
     </div>
-
-
-
-<section class="panel mt-4">
-  <div class="panel-heading">
-    <h2>Grupių valdymas</h2>
-  </div>
-
-  <form id="groupForm">
-    <label for="newGroupName" class="form-label">
-      Naujos grupės pavadinimas
-    </label>
-    <input id="newGroupName" class="form-control mb-3"
-           placeholder="Pvz., Kelionė į Romą" required>
-
-    <label class="form-label">Pasirinkite bent 2 narius</label>
-    <div id="availableUsers" class="mb-3">
-      Pridėkite narių, kad galėtumėte sukurti grupę.
-    </div>
-
-    <button type="submit" class="btn btn-primary">
-      Sukurti grupę
-    </button>
-  </form>
-
-  <div id="groupMessage" class="mt-3 d-none"></div>
-
-
-
-      </section>
-      </section>
-
-<!--  &lt;!&ndash; SKOLŲ PUSLAPIS &ndash;&gt;-->
-<!--  <section id="debtsPage" class="d-none">-->
-<!--    <section class="panel">-->
-<!--      <div class="panel-heading">-->
-<!--        <h2>Skolos ir atsiskaitymai</h2>-->
-<!--        <span class="symbol">⇄</span>-->
-<!--      </div>-->
-<!--      <div id="debtsList" class="stack">-->
-<!--        <div class="empty-state">Pasirinkite grupę.</div>-->
-<!--      </div>-->
-<!--    </section>-->
-<!--  </section>-->
-
-</main>
-
-<!-- IŠLAIDŲ PRIDĖJIMO LANGAS -->
-<div class="modal fade" id="expenseModal" tabindex="-1">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h2 class="modal-title fs-5">Pridėti naują išlaidą</h2>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-
-      <form id="expenseForm">
-        <div class="modal-body">
-          <label for="payerId" class="form-label">Kas sumokėjo?</label>
-          <select id="payerId" class="form-select mb-3" required></select>
-
-          <label for="expenseAmount" class="form-label">Suma (€)</label>
-          <input id="expenseAmount" type="number" min="0.01" step="0.01"
-                 class="form-control" placeholder="Pvz., 60.00" required>
-
-          <div id="expenseMessage" class="mt-3 d-none"></div>
-        </div>
-
-        <div class="modal-footer">
-          <button type="button" class="btn btn-outline-secondary"
-                  data-bs-dismiss="modal">Atšaukti</button>
-          <button type="submit" class="btn btn-primary">Išsaugoti išlaidą</button>
-        </div>
-      </form>
-    </div>
-  </div>
 </div>
-</div> <!-- appScreen pabaiga -->
+
+<div id="appScreen" class="d-none">
+    <header class="topbar">
+        <div class="shell topbar-inner">
+            <a href="#" class="brand" onclick="showPage('home'); return false">SplitPay</a>
+            <nav class="main-nav">
+                <button class="nav-item active" data-page="home" onclick="showPage('home')">Pagrindinis</button>
+                <button class="nav-item" data-page="manage" onclick="showPage('manage')">Valdymas</button>
+                <button id="logoutBtn" type="button" class="btn btn-outline-danger btn-sm ms-3" onclick="logout()">Atsijungti</button>
+            </nav>
+        </div>
+    </header>
+
+    <main class="shell py-4 py-lg-5">
+        <div id="globalMessage" class="alert d-none"></div>
+
+        <section class="hero d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+            <div>
+                <div class="eyebrow">TAVO FINANSAI, PAPRASČIAU</div>
+                <h1>Sveiki sugrįžę į SplitPay!</h1>
+                <p>Tvarkykite bendras išlaidas ir matykite, kas kam skolingas.</p>
+            </div>
+            <button class="btn btn-primary btn-lg" onclick="openExpense()">＋ Pridėti išlaidą/-as</button>
+        </section>
+
+        <section class="panel mb-4">
+            <div class="panel-heading">
+                <h2>Pasirinkite grupę</h2>
+            </div>
+            <div class="row g-3 align-items-end">
+                <div class="col-md-10">
+                    <label class="form-label" for="groupId">Grupė</label>
+                    <select class="form-select" id="groupId">
+                        <option value="">Pasirinkite grupę</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button class="btn btn-primary w-100" onclick="loadBalances()">Rodyti</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="homePage">
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <article class="stat-card stat-sage">
+                        <div>
+                            <div class="stat-label">Bendros išlaidos</div>
+                            <div class="stat-value" id="totalExpenses">—</div>
+                        </div>
+                    </article>
+                </div>
+                <div class="col-md-4">
+                    <article class="stat-card stat-mint">
+                        <div>
+                            <div class="stat-label">Teigiami balansai</div>
+                            <div class="stat-value" id="positiveBalances">—</div>
+                        </div>
+                    </article>
+                </div>
+                <div class="col-md-4">
+                    <article class="stat-card stat-sand">
+                        <div>
+                            <div class="stat-label">Aktyvi grupė</div>
+                            <div class="stat-value stat-name" id="activeGroup">Nepasirinkta</div>
+                        </div>
+                    </article>
+                </div>
+            </div>
+
+            <div class="row g-4">
+                <div class="col-lg-7">
+                    <section class="panel h-100">
+                        <div class="panel-heading">
+                            <h2>Grupės balansai</h2>
+                            <span class="subtle" id="memberCount">Pasirinkite grupę</span>
+                        </div>
+                        <div id="balancesList" class="stack">
+                            <div class="empty-state">Pasirinkite grupę.</div>
+                        </div>
+                    </section>
+                </div>
+                <div class="col-lg-5">
+                    <section class="panel h-100">
+                        <div class="panel-heading">
+                            <h2>Kas kam skolingas?</h2>
+                            <span class="symbol">⇄</span>
+                        </div>
+                        <div id="settlementsList" class="stack">
+                            <div class="empty-state">Skolos bus rodomos pasirinkus grupę.</div>
+                        </div>
+                    </section>
+                </div>
+            </div>
+
+            <section class="panel mt-4">
+                <div class="panel-heading">
+                    <h2>Grupės išlaidų valdymas</h2>
+                </div>
+                <p class="subtle">Ištrinkite visas pasirinktos grupės išlaidas. Grupė ir jos nariai išliks, o balansai taps nuliniai.</p>
+                <button id="resetGroupButton" type="button" class="btn btn-outline-danger" onclick="resetGroup()">Išvalyti grupės išlaidas</button>
+                <div id="resetMessage" class="mt-3 d-none"></div>
+            </section>
+        </section>
+
+        <section id="managePage" class="d-none">
+            <div class="section-intro">
+                <h2>Narių ir grupių valdymas</h2>
+            </div>
+
+            <div class="row g-4">
+                <div class="col-lg-6">
+                    <section class="panel h-100">
+                        <div class="panel-heading">
+                            <h2>＋ Naujas vartotojas</h2>
+                        </div>
+                        <p class="subtle">Pridėkite žmogų prie savo paskyros. Jį galėsite įtraukti į grupes.</p>
+                        <form id="userForm">
+                            <div class="row g-3 mb-3">
+                                <div class="col-sm-6">
+                                    <label for="userName" class="form-label">Vardas</label>
+                                    <input id="userName" class="form-control" required>
+                                </div>
+                                <div class="col-sm-6">
+                                    <label for="userSurname" class="form-label">Pavardė</label>
+                                    <input id="userSurname" class="form-control" required>
+                                </div>
+                            </div>
+                            <button class="btn btn-primary" type="submit">Pridėti vartotoją</button>
+                        </form>
+                        <div id="userMessage" class="mt-3 d-none"></div>
+                    </section>
+                </div>
+            </div>
+
+            <section class="panel mt-4">
+                <div class="panel-heading">
+                    <h2>Grupių valdymas</h2>
+                </div>
+                <form id="groupForm">
+                    <label for="newGroupName" class="form-label">Naujos grupės pavadinimas</label>
+                    <input id="newGroupName" class="form-control mb-3" placeholder="Pvz., Kelionė į Romą" required>
+
+                    <label class="form-label">Pasirinkite bent 1 papildomą narį</label>
+                    <p class="subtle">Jūs automatiškai būsite įtrauktas į savo sukurtą grupę.</p>
+
+                    <div id="availableUsers" class="mb-3">Pridėkite kitų žmonių, kad galėtumėte sukurti grupę.</div>
+
+                    <button type="submit" class="btn btn-primary">Sukurti grupę</button>
+                </form>
+                <div id="groupMessage" class="mt-3 d-none"></div>
+            </section>
+        </section>
+    </main>
+
+    <div class="modal fade" id="expenseModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title fs-5">Pridėti naują išlaidą</h2>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="expenseForm">
+                    <div class="modal-body">
+                        <label for="payerId" class="form-label">Kas sumokėjo?</label>
+                        <select id="payerId" class="form-select mb-3" required></select>
+
+                        <label for="expenseAmount" class="form-label">Suma (€)</label>
+                        <input id="expenseAmount" type="number" min="0.01" step="0.01" class="form-control" placeholder="Pvz., 60.00" required>
+
+                        <div id="expenseMessage" class="mt-3 d-none"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Atšaukti</button>
+                        <button type="submit" class="btn btn-primary">Išsaugoti išlaidą</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="/static/frontend.js"></script>
 </body>

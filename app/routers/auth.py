@@ -1,31 +1,37 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from pwdlib import PasswordHash
 
 from app.database import get_db
-from app.models import Account, Tenant
-
-from fastapi import Request
+from app.models import Account, User
 
 router = APIRouter(tags=["Authentication"])
-
 password_hash = PasswordHash.recommended()
 
 
 class RegisterRequest(BaseModel):
     username: str = Field(min_length=3, max_length=50)
+    name: str = Field(min_length=1, max_length=50)
+    surname: str = Field(min_length=1, max_length=50)
     password: str = Field(min_length=8, max_length=128)
+
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
 
 
 @router.post("/auth/register", status_code=201)
 def register(data: RegisterRequest, db: Session = Depends(get_db)):
     username = data.username.strip()
+    name = data.name.strip()
+    surname = data.surname.strip()
 
-    if len(username) < 3:
+    if len(username) < 3 or not name or not surname:
         raise HTTPException(
             status_code=400,
-            detail="Naudotojo vardas turi turėti bent 3 simbolius"
+            detail="Patikrinkite naudotojo vardą, vardą ir pavardę"
         )
 
     existing = db.query(Account).filter(
@@ -38,38 +44,43 @@ def register(data: RegisterRequest, db: Session = Depends(get_db)):
             detail="Toks naudotojo vardas jau užimtas"
         )
 
-    tenant = Tenant(name=f"{username} erdvė")
-    db.add(tenant)
-    db.flush()
-
     account = Account(
         username=username,
         password_hash=password_hash.hash(data.password),
-        tenant_id=tenant.id
+        name=name,
+        surname=surname
     )
 
     db.add(account)
+    db.flush()
+
+    user = User(
+        name=name,
+        surname=surname,
+        account_id=account.id
+    )
+
+    db.add(user)
+    db.flush()
+
+    account.user_id = user.id
+
     db.commit()
     db.refresh(account)
 
     return {
         "message": "Paskyra sėkmingai sukurta",
         "account_id": account.id,
-        "username": account.username
+        "username": account.username,
+        "user_id": account.user_id
     }
-
-class LoginRequest(BaseModel):
-    username: str
-    password: str
 
 
 @router.post("/auth/login")
 def login(data: LoginRequest, request: Request, db: Session = Depends(get_db)):
-    account = (
-        db.query(Account)
-        .filter(Account.username == data.username)
-        .first()
-    )
+    account = db.query(Account).filter(
+        Account.username == data.username
+    ).first()
 
     if account is None or not password_hash.verify(
         data.password, account.password_hash
@@ -86,8 +97,9 @@ def login(data: LoginRequest, request: Request, db: Session = Depends(get_db)):
         "message": "Prisijungimas sėkmingas",
         "account_id": account.id,
         "username": account.username,
-        "tenant_id": account.tenant_id
+        "user_id": account.user_id
     }
+
 
 @router.get("/auth/me")
 def get_current_account(
@@ -116,7 +128,9 @@ def get_current_account(
     return {
         "id": account.id,
         "username": account.username,
-        "tenant_id": account.tenant_id
+        "name": account.name,
+        "surname": account.surname,
+        "user_id": account.user_id
     }
 
 

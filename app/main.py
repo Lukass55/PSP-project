@@ -8,7 +8,6 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from app.routers.tenants import router as tenants_router
 from app.routers.users import router as users_router
 from app.routers.groups import router as groups_router
 from app.routers.expenses import router as expenses_router
@@ -28,23 +27,18 @@ app.add_middleware(
     https_only=False
 )
 
-# Nustatome aplankų kelius
 BASE_DIR = Path(__file__).resolve().parent
 
-# Prijungiame CSS ir kitus statinius failus
 app.mount(
     "/static",
     StaticFiles(directory=BASE_DIR / "static"),
     name="static"
 )
 
-# Prijungiame HTML šablonus
 templates = Jinja2Templates(
     directory=BASE_DIR / "templates"
 )
 
-# Prijungiame API maršrutus
-app.include_router(tenants_router)
 app.include_router(users_router)
 app.include_router(groups_router)
 app.include_router(expenses_router)

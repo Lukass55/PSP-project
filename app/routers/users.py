@@ -1,42 +1,63 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Tenant, User
+from app.models import Account, User
 from app.schemas import UserCreate
-
 
 router = APIRouter(tags=["Users"])
 
-@router.get("/tenants/{tenant_id}/users")
-def get_users(tenant_id: int, db: Session = Depends(get_db)):
-    users = (
-        db.query(User)
-        .filter(User.tenant_id == tenant_id)
-        .order_by(User.id)
-        .all()
-    )
+
+def get_current_account(request: Request, db: Session):
+    account_id = request.session.get("account_id")
+
+    if account_id is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Turite prisijungti"
+        )
+
+    account = db.query(Account).filter(
+        Account.id == account_id
+    ).first()
+
+    if account is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Paskyra nerasta"
+        )
+
+    return account
+
+
+@router.get("/users")
+def get_users(
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    account = get_current_account(request, db)
+
+    users = db.query(User).filter(
+        User.account_id == account.id
+    ).order_by(User.id).all()
 
     return [
-        {"id": user.id, "name": user.name, "surname": user.surname}
+        {
+            "id": user.id,
+            "name": user.name,
+            "surname": user.surname
+        }
         for user in users
     ]
 
-@router.post("/tenants/{tenant_id}/users")
+
+@router.post("/users", status_code=201)
 def create_user(
-    tenant_id: int,
     user: UserCreate,
+    request: Request,
     db: Session = Depends(get_db)
 ):
-    tenant = db.query(Tenant).filter(
-        Tenant.id == tenant_id
-    ).first()
-
-    if tenant is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Klientas nerastas"
-        )
+    account = get_current_account(request, db)
 
     name = user.name.strip()
     surname = user.surname.strip()
@@ -56,7 +77,7 @@ def create_user(
     new_user = User(
         name=name,
         surname=surname,
-        tenant_id=tenant_id
+        account_id=account.id
     )
 
     db.add(new_user)
@@ -67,5 +88,5 @@ def create_user(
         "id": new_user.id,
         "name": new_user.name,
         "surname": new_user.surname,
-        "tenant_id": new_user.tenant_id
+        "account_id": new_user.account_id
     }
